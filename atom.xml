@@ -2,12 +2,23 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://kfxp12138.github.io/</id>
     <title>triplewings</title>
-    <updated>2021-12-30T11:56:22.880Z</updated>
+    <updated>2022-02-28T06:32:50.614Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://kfxp12138.github.io/"/>
     <link rel="self" href="https://kfxp12138.github.io/atom.xml"/>
     <subtitle>I will never lose, ever I learn or I win</subtitle>
     <logo>https://kfxp12138.github.io/images/avatar.png</logo>
     <icon>https://kfxp12138.github.io/favicon.ico</icon>
-    <rights>All rights reserved 2021, triplewings</rights>
+    <rights>All rights reserved 2022, triplewings</rights>
+    <entry>
+        <title type="html"><![CDATA[2022hgamectf]]></title>
+        <id>https://kfxp12138.github.io/post/2022hgamectf/</id>
+        <link href="https://kfxp12138.github.io/post/2022hgamectf/">
+        </link>
+        <updated>2022-02-28T06:30:53.000Z</updated>
+        <summary type="html"><![CDATA[<p>2022的重置更新，就从这里开始吧~</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>2022的重置更新，就从这里开始吧~</p>
+]]></content>
+    </entry>
 </feed>
